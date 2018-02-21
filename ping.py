@@ -3,10 +3,13 @@
 
 import socket
 
-from bits import bytes_to_ints, ones_complement_sum, ones_complement
+from bits import bytes_to_ints
+from bits import ones_complement
+from bits import ones_complement_sum
+from bits import sixteen_to_eight
 
 
-def checksum(bs):
+def do_checksum(bs):
     ints = bytes_to_ints(bs)
     ones_comp_sum = ones_complement_sum(ints)
     return ones_complement(ones_comp_sum)
@@ -22,17 +25,28 @@ def ping(dest, seq):
     icmp_type = bytes([8])
     icmp_code = bytes([0])
     checksum = bytes([0, 0])
-    identifier = sixteen_to_eight([1])
-    sequence_number = sixteen_to_eight([seq])
+    identifier = bytes(sixteen_to_eight([1]))
+    sequence_number = bytes(sixteen_to_eight([seq]))
     data = bytes(list(range(32)))
-    payload = b"".join(
+    payload = b"".join([
         icmp_type,
         icmp_code,
         checksum,
         identifier,
         sequence_number,
-        data
-    )
+        data,
+    ])
+
+    checksum = bytes(sixteen_to_eight([do_checksum(payload)]))
+
+    payload = b"".join([
+        icmp_type,
+        icmp_code,
+        checksum,
+        identifier,
+        sequence_number,
+        data,
+    ])
 
     sock.sendto(payload, (dest, 1))
 
