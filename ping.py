@@ -1,7 +1,6 @@
 #! /usr/bin/env python3
 "Rudimentary ping using sockets."
 
-from collections import defaultdict
 import random
 import socket
 import struct
@@ -14,6 +13,12 @@ from bits import sixteen_to_eight
 
 
 def ping(dest):
+    """
+    Main entry point.
+
+    Generate a random 16-bit identifier, get the IP of a host, and then ping
+    once every second.
+    """
     identifier = random.randint(0, (1 << 16) - 1)
     size = 56
     dest_ip = socket.gethostbyname(dest)
