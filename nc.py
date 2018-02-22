@@ -13,9 +13,9 @@ def fake(host, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     addr = (socket.gethostbyname(host), port)
     sock.connect(addr)
-    sock.send(b"GET /\n")
-    reply = sock.recv(512)
-    print(reply)
+    print("connected - fake")
+    # sock.send(b"GET /\n")
+    # reply = sock.recv(512)
 
 
 def connect(host, port):
@@ -26,6 +26,7 @@ def connect(host, port):
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) != 3:
         print("nc: nc <host> <port>")
     else:
