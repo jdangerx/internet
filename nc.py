@@ -6,7 +6,7 @@
 # let's do it with sock_stream first
 
 import socket
-from tcp import *
+from tcp import TCPConnection
 
 
 def fake(host, port):
@@ -19,12 +19,9 @@ def fake(host, port):
 
 
 def connect(host, port):
-    # syn = make a tcp packet for syn
-    # send syn to host/port
-    # receive for syn/ack
-    # parse syn/ack
-    # ack = make correct ack packet
-    # send ack
+    host_ip = socket.gethostbyname(host)
+    conn = TCPConnection()
+    conn.connect(host_ip, port)
 
 
 if __name__ == "__main__":
@@ -32,4 +29,4 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("nc: nc <host> <port>")
     else:
-        fake(sys.argv[1], int(sys.argv[2]))
+        connect(sys.argv[1], int(sys.argv[2]))
