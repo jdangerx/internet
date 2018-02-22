@@ -1,5 +1,6 @@
 import itertools
 
+
 def bytes_to_ints(bs):
     """
     Convert a list of bytes to a list of integers.
@@ -19,13 +20,13 @@ def bytes_to_ints(bs):
     return [(a << 8) + b for a, b in pairs]
 
 
-def sixteen_to_eight(xs):
+def short_to_chars(xs):
     """
     Convert a list of integers to a list of bytes.
 
-    >>> sixteen_to_eight([256, 513])
+    >>> short_to_chars([256, 513])
     [1, 0, 2, 1]
-    >>> sixteen_to_eight([])
+    >>> short_to_chars([])
     []
     """
     arr = itertools.chain.from_iterable((x >> 8, x & 255) for x in xs)
@@ -92,6 +93,12 @@ def ones_complement(x, bitsize=16):
     15232
     """
     return ((1 << bitsize) - 1) ^ x
+
+
+def checksum(bs):
+    ints = bytes_to_ints(bs)
+    ones_comp_sum = ones_complement_sum(ints)
+    return ones_complement(ones_comp_sum)
 
 
 if __name__ == "__main__":

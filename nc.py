@@ -6,6 +6,7 @@
 # let's do it with sock_stream first
 
 import socket
+from tcp import *
 
 
 def fake(host, port):
@@ -15,6 +16,15 @@ def fake(host, port):
     sock.send(b"GET /\n")
     reply = sock.recv(512)
     print(reply)
+
+
+def connect(host, port):
+    # syn = make a tcp packet for syn
+    # send syn to host/port
+    # receive for syn/ack
+    # parse syn/ack
+    # ack = make correct ack packet
+    # send ack
 
 
 if __name__ == "__main__":

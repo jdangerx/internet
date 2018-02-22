@@ -6,10 +6,8 @@ import socket
 import struct
 import time
 
-from bits import bytes_to_ints
-from bits import ones_complement
-from bits import ones_complement_sum
-from bits import sixteen_to_eight
+from bits import checksum
+from bits import short_to_chars
 
 
 def ping(dest):
@@ -42,8 +40,8 @@ def ping_one(dest, seq, identifier, size):
     icmp_type = bytes([ICMP_ECHO_REQUEST])
     icmp_code = bytes([0])
     icmp_checksum = bytes([0, 0])
-    icmp_id = bytes(sixteen_to_eight([identifier]))
-    icmp_seq = bytes(sixteen_to_eight([seq]))
+    icmp_id = bytes(short_to_chars([identifier]))
+    icmp_seq = bytes(short_to_chars([seq]))
     icmp_data = bytes(list(range(size)))
     payload = b"".join([
         icmp_type,
@@ -54,7 +52,7 @@ def ping_one(dest, seq, identifier, size):
         icmp_data,
     ])
 
-    icmp_checksum = bytes(sixteen_to_eight([checksum(payload)]))
+    icmp_checksum = bytes(short_to_chars([checksum(payload)]))
 
     payload = b"".join([
         icmp_type,
@@ -79,12 +77,6 @@ def ping_one(dest, seq, identifier, size):
     reply_info = _parse_ping_reply(reply)
     msg = "{length} bytes from {source}: icmp_seq={icmp_seq} ttl={ttl} time={time:.2f} ms"
     print(msg.format(time=elapsed_ms, **reply_info))
-
-
-def checksum(bs):
-    ints = bytes_to_ints(bs)
-    ones_comp_sum = ones_complement_sum(ints)
-    return ones_complement(ones_comp_sum)
 
 
 def _parse_ping_reply(reply):
