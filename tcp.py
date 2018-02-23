@@ -115,10 +115,7 @@ class TCPPacket(object):
         self.window_size = fields["window_size"]
         self.urgent_pointer = fields["urgent_pointer"]
         self.opts = fields.get("opts", b"")
-        data = fields.get("data", b"")
-        if len(data) % 2 == 1:
-            data += b"\0"
-        self.data = data
+        self.data = fields.get("data", b"")
 
         self.pseudo_header = self.get_pseudo_header(socket)
 
@@ -126,13 +123,8 @@ class TCPPacket(object):
         return self.hlen * 4 + len(self.data)
 
     def __repr__(self):
-        return (f"<TCP "
-                f"src_port={self.src_port} "
-                f"dst_port={self.dst_port} "
-                f"seq_num={self.seq_num} "
-                f"ack_num={self.ack_num} "
-                f"flags={self.flags}"
-                f" >")
+        import pprint
+        return (f"<TCP\n{pprint.pprint(self.__dict__)}\n>")
 
     def get_pseudo_header(self, socket):
         src_host, _src_port = socket.getsockname()
@@ -152,8 +144,10 @@ class TCPPacket(object):
 
     def pack(self):
         init_checksum = 0
-        raw_packet = self._pack(init_checksum)
-        tcp_checksum = checksum(self.pseudo_header + raw_packet)
+        to_checksum = self.pseudo_header + self._pack(init_checksum)
+        if len(to_checksum) % 2 == 1:
+            to_checksum += b"\0"
+        tcp_checksum = checksum(to_checksum)
         return self._pack(tcp_checksum)
 
     def _pack(self, tcp_checksum):
