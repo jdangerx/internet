@@ -35,7 +35,7 @@ class TCPConnection(object):
         resp = self.socket.recv(512)
         synack = TCPPacket(bytestream=resp, socket=self.socket)
 
-        if synack.flags["ack"] and synack.flags["syn"]:
+        if synack.flags["ack"] and synack.flags["syn"] and synack.ack_num == isn+1:
             ack = TCPPacket(
                 socket=self.socket,
                 seq_num=synack.ack_num,
@@ -45,8 +45,7 @@ class TCPConnection(object):
                 window_size=29200,
                 urgent_pointer=0
             )
-
-        self.socket.sendto(ack.pack(), dst_addr)
+            self.socket.sendto(ack.pack(), dst_addr)
 
 
 class TCPPacket(object):
