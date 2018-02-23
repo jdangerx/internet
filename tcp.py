@@ -16,7 +16,8 @@ class TCPConnection(object):
             proto=proto)
 
     def connect(self, host, port):
-        self.socket.connect((host, port))
+        dst_addr = (host, port)
+        self.socket.connect(dst_addr)
         isn = random.randint(0, (1 << 32) - 1)
 
         syn = TCPPacket(
@@ -29,11 +30,23 @@ class TCPConnection(object):
             urgent_pointer=0
         )
 
-        self.socket.sendto(syn.pack(), (host, port))
-        # parse syn/ack
-        # ack = make correct ack packet
-        # send ack
-        # print(resp)
+        self.socket.sendto(syn.pack(), dst_addr)
+
+        resp = self.socket.recv(512)
+        synack = TCPPacket(bytestream=resp, socket=self.socket)
+
+        if synack.flags["ack"] and synack.flags["syn"]:
+            ack = TCPPacket(
+                socket=self.socket,
+                seq_num=synack.ack_num,
+                ack_num=synack.seq_num+1,
+                hlen=5,
+                flags={"ack": True},
+                window_size=29200,
+                urgent_pointer=0
+            )
+
+        self.socket.sendto(ack.pack(), dst_addr)
 
 
 class TCPPacket(object):
@@ -125,13 +138,13 @@ class TCPPacket(object):
             "tcp_checksum",
             "urgent_pointer",
         ]
-
-        unpacked, _ = struct.unpack_from(TCPPacket.fmt, bytestream, 0)
+        ip_header_len = 20
+        unpacked = struct.unpack_from(TCPPacket.fmt, bytestream, ip_header_len)
         raw = dict(zip(keys, unpacked))
 
         hlen = raw["hlen_resv"] >> 4
         flags = TCPPacket.unpack_flags(raw["flags"])
-        del raw["hlen_rsv"]
+        del raw["hlen_resv"]
         raw["hlen"] = hlen
         raw["flags"] = flags
         return raw
@@ -141,7 +154,7 @@ class TCPPacket(object):
         flag_masks = {name: 1 << (7 - i)
                       for i, name in enumerate(TCPPacket.flag_names)}
         flags = {
-            name: flags_byte & mask != 0 for name, mask in flag_masks
+            name: flags_byte & mask != 0 for name, mask in flag_masks.items()
         }
         return flags
 
