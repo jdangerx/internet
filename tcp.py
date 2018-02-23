@@ -8,44 +8,81 @@ from bits import checksum
 
 
 class TCPConnection(object):
-    def __init__(self):
+    def __init__(self, host, port):
         proto = socket.getprotobyname('tcp')
+        self.to_seq = random.randint(0, (1 << 32) - 1)
+        self.to_ack = 0
+
+        self.dst_addr = (host, port)
         self.socket = socket.socket(
             family=socket.AF_INET,
             type=socket.SOCK_RAW,
             proto=proto)
 
-    def connect(self, host, port):
-        dst_addr = (host, port)
-        self.socket.connect(dst_addr)
-        isn = random.randint(0, (1 << 32) - 1)
+    def connect(self):
+        self.socket.connect(self.dst_addr)
 
         syn = TCPPacket(
             socket=self.socket,
-            seq_num=isn,
-            ack_num=0,
+            seq_num=self.to_seq,
+            ack_num=self.to_ack,
             hlen=5,
             flags={"syn": True},
             window_size=29200,
             urgent_pointer=0
         )
 
-        self.socket.sendto(syn.pack(), dst_addr)
+        self.socket.sendto(syn.pack(), self.dst_addr)
 
-        resp = self.socket.recv(512)
+        resp = self.socket.recv(4096)
         synack = TCPPacket(bytestream=resp, socket=self.socket)
 
-        if synack.flags["ack"] and synack.flags["syn"] and synack.ack_num == isn+1:
+        if synack.flags["ack"] and synack.flags["syn"] and synack.ack_num == self.to_seq+1:
+            self.to_ack = synack.seq_num + 1
+            self.to_seq = synack.ack_num
             ack = TCPPacket(
                 socket=self.socket,
-                seq_num=synack.ack_num,
-                ack_num=synack.seq_num+1,
+                seq_num=self.to_seq,
+                ack_num=self.to_ack,
                 hlen=5,
                 flags={"ack": True},
                 window_size=29200,
                 urgent_pointer=0
             )
-            self.socket.sendto(ack.pack(), dst_addr)
+            self.socket.sendto(ack.pack(), self.dst_addr)
+        else:
+            raise RuntimeError("Received bad SYN/ACK!")
+
+    def push(self, data):
+        psh = TCPPacket(
+            socket=self.socket,
+            seq_num=self.to_seq,
+            ack_num=self.to_ack,
+            hlen=5,
+            flags={"psh": True, "ack": True},
+            window_size=29200,
+            urgent_pointer=0,
+            data=data
+        )
+        self.socket.sendto(psh.pack(), self.dst_addr)
+        resp = self.socket.recv(4096)
+        pkt = TCPPacket(resp, self.socket)
+        if pkt.flags["ack"] == True:
+            print(pkt.ack_num)
+            print(self.to_seq + len(psh))
+        else:
+            print(pkt)
+            raise RuntimeError("Received bad ACK!")
+
+    def read(self):
+        data = b""
+        finished = False
+        while not finished:
+            pkt = self.socket.recv(4096)
+            received = TCPPacket(pkt, self.socket)
+            finished = received.flags.get("fin", False)
+            data += received.data
+        print(data)
 
 
 class TCPPacket(object):
@@ -78,12 +115,24 @@ class TCPPacket(object):
         self.window_size = fields["window_size"]
         self.urgent_pointer = fields["urgent_pointer"]
         self.opts = fields.get("opts", b"")
-        self.data = fields.get("data", b"")
+        data = fields.get("data", b"")
+        if len(data) % 2 == 1:
+            data += b"\0"
+        self.data = data
 
         self.pseudo_header = self.get_pseudo_header(socket)
 
     def __len__(self):
         return self.hlen * 4 + len(self.data)
+
+    def __repr__(self):
+        return (f"<TCP "
+                f"src_port={self.src_port} "
+                f"dst_port={self.dst_port} "
+                f"seq_num={self.seq_num} "
+                f"ack_num={self.ack_num} "
+                f"flags={self.flags}"
+                f" >")
 
     def get_pseudo_header(self, socket):
         src_host, _src_port = socket.getsockname()
@@ -160,7 +209,7 @@ class TCPPacket(object):
     @staticmethod
     def pack_flags(flags_dict):
         flag_bits = {name: 1 << (7 - i)
-                      for i, name in enumerate(TCPPacket.flag_names)}
+                     for i, name in enumerate(TCPPacket.flag_names)}
 
         flags_byte = 0
         for flag_name, flag in flags_dict.items():

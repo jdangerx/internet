@@ -1,11 +1,9 @@
 #! /usr/bin/env python3
-
 "Rudimentary netcat."
 
-
-# let's do it with sock_stream first
-
 import socket
+import sys
+
 from tcp import TCPConnection
 
 
@@ -18,16 +16,23 @@ def fake(host, port):
     # reply = sock.recv(512)
 
 
-def connect(host, port):
+def send(host, port):
     host_ip = socket.gethostbyname(host)
-    conn = TCPConnection()
-    conn.connect(host_ip, port)
+    conn = TCPConnection(host_ip, port)
+    print("Connecting")
+    conn.connect()
+    print("Connected")
+    data = bytes(sys.stdin.read(), "utf-8")
+    print("Pushing")
+    conn.push(data)
+    print("Pushed")
+    print("Reading")
+    resp = conn.read()
+    print(resp)
 
 
 if __name__ == "__main__":
-    import sys
-
     if len(sys.argv) != 3:
         print("nc: nc <host> <port>")
     else:
-        connect(sys.argv[1], int(sys.argv[2]))
+        send(sys.argv[1], int(sys.argv[2]))
